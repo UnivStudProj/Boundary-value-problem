@@ -21,7 +21,7 @@ cube_a = D / c
 sigma = (h_t * cube_a) / (2 * h_x ** 2)
 x_dots = np.linspace(0, l, num=I)
 t_dots = np.linspace(0, T, num=K)
-psi_of_x = [u_c + (1 + np.cos((np.pi * x) / l)) for x in x_dots]
+psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
 
 # Arrays with the function values
 curr_dots = np.array([i for i in psi_of_x], dtype=float)
@@ -31,6 +31,7 @@ new_dots = np.empty_like(curr_dots)
 p_coeff = np.zeros(len(x_dots), dtype=float)
 q_coeff = np.zeros(len(x_dots), dtype=float)
 
+
 # Logging thing
 def log(smth):
     logging.info('=' * 50)
@@ -38,49 +39,74 @@ def log(smth):
     logging.info('=' * 50)
     
 
-# FIXME: run coeffs bullshit
+# Setting new dots from previouses
+def SetNewDots():
+    new_dots[0] = curr_dots[0] + 2 * sigma * (curr_dots[1] - curr_dots[0])
+    for i in range(1, I - 1):
+        new_dots[i] = curr_dots[i] + sigma * (curr_dots[i + 1] - 2 * curr_dots[i] + curr_dots[i - 1])
+    new_dots[I - 1] = curr_dots[I - 1] + 2 * sigma * ((-1 - H * h_x) * curr_dots[I - 1] + curr_dots[I - 2])
+
 
 # SweepMethod for the Crank-Nicolson scheme
 def ComputeDots():
-    # Calculating run coeffs
-    b = 1 + 2 * sigma
+    SetNewDots()
     for i in range(I):
         if i == 0:
             # Matrix elements
             a = 0
             c = -2 * sigma
             # Setting coeffs for the next run 
-            p_coeff[i + 1] = -c / b
-            q_coeff[i + 1] = curr_dots[i] / b
+            p_coeff[i] = -c / b
+            q_coeff[i] = new_dots[i] / b
         elif i >= 1 and i <= I - 2:
             # Matrix elements
             a = -sigma
             c = -sigma
             # Run coefficients
-            p_coeff[i + 1] = -c / (b + p_coeff[i] * a)
-            q_coeff[i + 1] = (curr_dots[i] - a * q_coeff[i]) / (b + p_coeff[i] * a)
+            p_coeff[i] = -c / (b + p_coeff[i - 1] * a)
+            q_coeff[i] = (new_dots[i] - a * q_coeff[i - 1]) / (b + p_coeff[i - 1] * a)
         elif i == I - 1:
             # Matrix elements
             a = -2 * sigma
             b += 2 * sigma * H * h_x
             c = 0
             # Run coefficients
-            p_coeff[i] = 0
-            q_coeff[i] = (curr_dots[i] - a * q_coeff[i]) / (b + a * p_coeff[i])
+            p_coeff[I - 1] = 0
+            q_coeff[I - 1] = (new_dots[I - 1] - a * q_coeff[I - 1]) / (b + a * p_coeff[I - 1])
     # Calculating dots values
-    for i in range(I, -1, -1):
-        if i == 0 or (i >= 1 and i <= I - 2):
-            new_dots[i] = p_coeff[i + 1] * new_dots[i + 1] + q_coeff[i + 1]
-        elif i == I - 1:
-            new_dots[i] = q_coeff[i]
-    
+    new_dots[I - 1] = q_coeff[I - 1]
+    for i in range(I - 1, 0, -1):
+        new_dots[i - 1] = new_dots[i] * p_coeff[i - 1] + q_coeff[i - 1]
+    log(new_dots)
 
+
+# Setting matrix "A"
+def setMatrix_A():
+    global mat_A
+    mat_A = np.mat(np.zeros((len(x_dots), len(x_dots)), dtype=float))
+    mat_A[0, 0] = 1 + 2 * sigma
+    mat_A[0, 1] = -2 * sigma
+    for i in range(1, I - 1):
+        mat_A[i, i - 1] = -sigma
+        mat_A[i, i] = 1 + 2 * sigma
+        mat_A[i, i + 1] = - sigma
+    mat_A[I - 1, I - 2] = -2 * sigma
+    mat_A[I - 1, I - 1] = 1 + 2 * sigma + 2 * sigma * H * h_x
+    return mat_A
+  
+
+# Adding rows with substance concentration values
+def addRow():
+    mat_U = np.mat(np.zeros((len(t_dots), mat_A.shape[1]), dtype=float))
+    mat_U[[K - 1]] = psi_of_x
+    for k in range(K - 2, -1, -1):
+        mat_U[[k]] = ComputeDots()
+       
+     
 # Creating plots
-for t_d in range(1, T, 4):
-    ComputeDots()
-    plt.plot(x_dots, curr_dots, label=f'u(x, {t_d:.2f})')
-    curr_dots = np.array([x for x in new_dots])
-    
+
+plt.plot(x_dots, curr_dots, label=f'u(x, {t_d:.2f})')
+curr_dots = np.array([x for x in new_dots])
     
 plt.title('Dynamic of substance concentretion change \nwithin the cylinder by time')
 plt.xlabel('Coords')
