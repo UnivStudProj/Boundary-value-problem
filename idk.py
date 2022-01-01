@@ -48,41 +48,25 @@ def SetNewDots():
 
 
 # SweepMethod for the Crank-Nicolson scheme
-def ComputeDots():
+def ComputeDots(mat_A):
     SetNewDots()
-    for i in range(I):
-        if i == 0:
-            # Matrix elements
-            a = 0
-            c = -2 * sigma
-            # Setting coeffs for the next run 
-            p_coeff[i] = -c / b
-            q_coeff[i] = new_dots[i] / b
-        elif i >= 1 and i <= I - 2:
-            # Matrix elements
-            a = -sigma
-            c = -sigma
-            # Run coefficients
-            p_coeff[i] = -c / (b + p_coeff[i - 1] * a)
-            q_coeff[i] = (new_dots[i] - a * q_coeff[i - 1]) / (b + p_coeff[i - 1] * a)
-        elif i == I - 1:
-            # Matrix elements
-            a = -2 * sigma
-            b += 2 * sigma * H * h_x
-            c = 0
-            # Run coefficients
-            p_coeff[I - 1] = 0
-            q_coeff[I - 1] = (new_dots[I - 1] - a * q_coeff[I - 1]) / (b + a * p_coeff[I - 1])
+    # Setting coeffs for the next run 
+    p_coeff[0] = -mat_A[0, 1] / mat_A[0, 0]
+    q_coeff[0] = new_dots[0] / mat_A[0, 0]
+    for i in range(1, I - 2):
+        p_coeff[i] = -mat_A[i, i + 1] / (mat_A[i, i] + p_coeff[i - 1] * mat_A[i, i - 1])
+        q_coeff[i] = (new_dots[i] - mat_A[i, i - 1] * q_coeff[i - 1]) / (mat_A[i, i] + p_coeff[i - 1] * mat_A[i, i - 1])
+    p_coeff[I - 1] = 0
+    q_coeff[I - 1] = (new_dots[I - 1] - mat_A[I - 1, I - 2] * q_coeff[I - 2]) / (mat_A[I - 1, I - 1] + mat_A[I - 1, I - 2] * p_coeff[I - 2])
     # Calculating dots values
     new_dots[I - 1] = q_coeff[I - 1]
     for i in range(I - 1, 0, -1):
         new_dots[i - 1] = new_dots[i] * p_coeff[i - 1] + q_coeff[i - 1]
-    log(new_dots)
+    return new_dots
 
 
 # Setting matrix "A"
 def setMatrix_A():
-    global mat_A
     mat_A = np.mat(np.zeros((len(x_dots), len(x_dots)), dtype=float))
     mat_A[0, 0] = 1 + 2 * sigma
     mat_A[0, 1] = -2 * sigma
@@ -96,17 +80,23 @@ def setMatrix_A():
   
 
 # Adding rows with substance concentration values
-def addRow():
+def addRow(mat_A):
+    global curr_dots
     mat_U = np.mat(np.zeros((len(t_dots), mat_A.shape[1]), dtype=float))
     mat_U[[K - 1]] = psi_of_x
     for k in range(K - 2, -1, -1):
-        mat_U[[k]] = ComputeDots()
+        mat_U[[k]] = ComputeDots(mat_A)
+        curr_dots = np.array([x for x in new_dots]) 
+    return mat_U
        
-     
-# Creating plots
+       
+def main():
+    U = addRow(setMatrix_A())
+    # Creating plots
+    for i in range(U.shape[0] - 1, -1, int(-U.shape[0] / 10)):
+        plt.plot(x_dots, np.ravel(U[[i]]), label=f'u(x, {T - i * h_t:.2f})')
 
-plt.plot(x_dots, curr_dots, label=f'u(x, {t_d:.2f})')
-curr_dots = np.array([x for x in new_dots])
+main()
     
 plt.title('Dynamic of substance concentretion change \nwithin the cylinder by time')
 plt.xlabel('Coords')
