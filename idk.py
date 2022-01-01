@@ -50,10 +50,10 @@ def SetNewDots():
 # SweepMethod for the Crank-Nicolson scheme
 def ComputeDots(mat_A):
     SetNewDots()
-    # Setting coeffs for the next run 
+    # Computing run coeffs 
     p_coeff[0] = -mat_A[0, 1] / mat_A[0, 0]
     q_coeff[0] = new_dots[0] / mat_A[0, 0]
-    for i in range(1, I - 2):
+    for i in range(1, I - 1):
         p_coeff[i] = -mat_A[i, i + 1] / (mat_A[i, i] + p_coeff[i - 1] * mat_A[i, i - 1])
         q_coeff[i] = (new_dots[i] - mat_A[i, i - 1] * q_coeff[i - 1]) / (mat_A[i, i] + p_coeff[i - 1] * mat_A[i, i - 1])
     p_coeff[I - 1] = 0
@@ -65,7 +65,7 @@ def ComputeDots(mat_A):
     return new_dots
 
 
-# Setting matrix "A"
+# Setting matrix "A" values
 def setMatrix_A():
     mat_A = np.mat(np.zeros((len(x_dots), len(x_dots)), dtype=float))
     mat_A[0, 0] = 1 + 2 * sigma
@@ -88,20 +88,40 @@ def addRow(mat_A):
         mat_U[[k]] = ComputeDots(mat_A)
         curr_dots = np.array([x for x in new_dots]) 
     return mat_U
-       
-       
-def main():
-    U = addRow(setMatrix_A())
-    # Creating plots
-    for i in range(U.shape[0] - 1, -1, int(-U.shape[0] / 10)):
-        plt.plot(x_dots, np.ravel(U[[i]]), label=f'u(x, {T - i * h_t:.2f})')
-
-main()
+      
     
-plt.title('Dynamic of substance concentretion change \nwithin the cylinder by time')
-plt.xlabel('Coords')
-plt.ylabel('Substance concentration')
-plt.grid()
-plt.legend()
+# Creating 2 plots 
+def createPlots(U):
+    # Substance concentration by time plot
+    plt.figure()
+    plt.title('Dynamic of substance concentretion change \nwithin the cylinder by time')
+    plt.xlabel('Coords')
+    plt.ylabel('Substance concentration')
+    plt.grid()
+    # Building curves
+    for i in range(U.shape[0] - 1, -1, int(-U.shape[0] / 10)):
+        fig = plt.subplot()
+        fig.plot(x_dots, np.ravel(U[[i]]), label=f'u(x, {T - i * h_t:.2f})')
+        fig.legend()
+    plt.show()
+    
+   # Substance concentration by space plot
+    plt.figure()
+    plt.title('Dynamic of substance concentretion change \nwithin the cylinder by space')
+    plt.xlabel('Time')
+    plt.ylabel('Substance concentration')
+    plt.grid()
+    # Building curves 
+    for k in range(U.shape[1] - 1, -1, int(-U.shape[1] / 10)):
+        fig = plt.subplot()
+        fig.plot(t_dots, np.flip(np.ravel(U[:, k])), label=f'u({l - k * h_x:.2f}, t)')
+        fig.legend()
+    plt.show()
+ 
 
-plt.show()
+# Program start 
+U = addRow(setMatrix_A())
+createPlots(U)
+
+
+    
