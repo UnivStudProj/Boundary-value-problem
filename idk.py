@@ -15,8 +15,8 @@ I = 50
 K = 50
 
 # Arguments for the Crank-Nicolson scheme
-h_x = l / I # 0.5
-h_t = T / K # 4
+h_x = l / I
+h_t = T / K
 cube_a = D / c
 sigma = (h_t * cube_a) / (2 * h_x ** 2)
 x_dots = np.linspace(0, l, num=I)
@@ -90,38 +90,34 @@ def addRow(mat_A):
     return mat_U
       
     
-# Creating 2 plots 
+# Creating two plots 
 def createPlots(U):
+    # Creating one figure (window) which contains two axes (plots)
+    fig, (ax1, ax2) = plt.subplots(
+        nrows=1, # Number of rows of the subplot grid. 
+        ncols=2, # Number of columns of the subplot grid. 
+        figsize=(12, 5), # Figure size in inches (size also affected by dpi)
+        num='Dynamic of substance concentretion change within the cylinder' # Window title
+    )
     # Substance concentration by time plot
-    plt.figure()
-    plt.title('Dynamic of substance concentretion change \nwithin the cylinder by time')
-    plt.xlabel('Coords')
-    plt.ylabel('Substance concentration')
-    plt.grid()
-    # Building curves
     for i in range(U.shape[0] - 1, -1, int(-U.shape[0] / 10)):
-        fig = plt.subplot()
-        fig.plot(x_dots, np.ravel(U[[i]]), label=f'u(x, {T - i * h_t:.2f})')
-        fig.legend()
-    plt.show()
-    
+        ax1.plot(x_dots, np.ravel(U[i]), label=f'u(x, {T - i * h_t:.2f})')
+    ax1.legend(loc='center left', bbox_to_anchor=(1.02, 0.5))
+    ax1.set_title('In time')
+    ax1.set_xlabel('Coords')
+    ax1.set_ylabel('Substance concentration')
+    ax1.grid()
    # Substance concentration by space plot
-    plt.figure()
-    plt.title('Dynamic of substance concentretion change \nwithin the cylinder by space')
-    plt.xlabel('Time')
-    plt.ylabel('Substance concentration')
-    plt.grid()
-    # Building curves 
-    for k in range(U.shape[1] - 1, -1, int(-U.shape[1] / 10)):
-        fig = plt.subplot()
-        fig.plot(t_dots, np.flip(np.ravel(U[:, k])), label=f'u({l - k * h_x:.2f}, t)')
-        fig.legend()
+    for k in range(0, U.shape[1], int(U.shape[1] / 10)):
+        ax2.plot(t_dots, np.flip(np.ravel(U[:, k])), label=f'u({k * h_x:.2f}, t)')
+    ax2.legend(loc='center left', bbox_to_anchor=(1.02, 0.5))
+    ax2.set_title('In space')
+    ax2.set_xlabel('Time')
+    ax2.grid()
+    fig.tight_layout(w_pad=2) # Plots padding (width)
     plt.show()
  
 
 # Program start 
 U = addRow(setMatrix_A())
 createPlots(U)
-
-
-    
