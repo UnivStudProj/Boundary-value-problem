@@ -24,12 +24,12 @@ t_dots = np.linspace(0, T, num=K)
 psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
 
 # Arrays with the function values
-curr_dots = np.array([i for i in psi_of_x], dtype=float)
-new_dots = np.empty_like(curr_dots) 
+u_prev = np.array([*psi_of_x], dtype=float)
+u_new = np.empty_like(u_prev) 
 
 # Run coeffs vaults
-p_coeff = np.zeros(len(x_dots), dtype=float)
-q_coeff = np.zeros(len(x_dots), dtype=float)
+p = np.zeros(len(x_dots), dtype=float)
+q = np.zeros(len(x_dots), dtype=float)
 
 
 # Logging thing
@@ -41,28 +41,28 @@ def log(smth):
 
 # Setting new dots from previouses
 def SetNewDots():
-    new_dots[0] = curr_dots[0] + 2 * sigma * (curr_dots[1] - curr_dots[0])
+    u_new[0] = u_prev[0] + 2 * sigma * (u_prev[1] - u_prev[0])
     for i in range(1, I - 1):
-        new_dots[i] = curr_dots[i] + sigma * (curr_dots[i + 1] - 2 * curr_dots[i] + curr_dots[i - 1])
-    new_dots[I - 1] = curr_dots[I - 1] + 2 * sigma * ((-1 - H * h_x) * curr_dots[I - 1] + curr_dots[I - 2])
+        u_new[i] = u_prev[i] + sigma * (u_prev[i + 1] - 2 * u_prev[i] + u_prev[i - 1])
+    u_new[I - 1] = u_prev[I - 1] + 2 * sigma * ((-1 - H * h_x) * u_prev[I - 1] + u_prev[I - 2])
 
 
 # SweepMethod for the Crank-Nicolson scheme
 def ComputeDots(mat_A):
     SetNewDots()
     # Computing run coeffs 
-    p_coeff[0] = -mat_A[0, 1] / mat_A[0, 0]
-    q_coeff[0] = new_dots[0] / mat_A[0, 0]
+    p[0] = -mat_A[0, 1] / mat_A[0, 0]
+    q[0] = u_new[0] / mat_A[0, 0]
     for i in range(1, I - 1):
-        p_coeff[i] = -mat_A[i, i + 1] / (mat_A[i, i] + p_coeff[i - 1] * mat_A[i, i - 1])
-        q_coeff[i] = (new_dots[i] - mat_A[i, i - 1] * q_coeff[i - 1]) / (mat_A[i, i] + p_coeff[i - 1] * mat_A[i, i - 1])
-    p_coeff[I - 1] = 0
-    q_coeff[I - 1] = (new_dots[I - 1] - mat_A[I - 1, I - 2] * q_coeff[I - 2]) / (mat_A[I - 1, I - 1] + mat_A[I - 1, I - 2] * p_coeff[I - 2])
+        p[i] = -mat_A[i, i + 1] / (mat_A[i, i] + p[i - 1] * mat_A[i, i - 1])
+        q[i] = (u_new[i] - mat_A[i, i - 1] * q[i - 1]) / (mat_A[i, i] + p[i - 1] * mat_A[i, i - 1])
+    p[I - 1] = 0
+    q[I - 1] = (u_new[I - 1] - mat_A[I - 1, I - 2] * q[I - 2]) / (mat_A[I - 1, I - 1] + mat_A[I - 1, I - 2] * p[I - 2])
     # Calculating dots values
-    new_dots[I - 1] = q_coeff[I - 1]
+    u_new[I - 1] = q[I - 1]
     for i in range(I - 1, 0, -1):
-        new_dots[i - 1] = new_dots[i] * p_coeff[i - 1] + q_coeff[i - 1]
-    return new_dots
+        u_new[i - 1] = u_new[i] * p[i - 1] + q[i - 1]
+    return u_new
 
 
 # Setting matrix "A" values
@@ -81,12 +81,12 @@ def setMatrix_A():
 
 # Adding rows with substance concentration values
 def addRow(mat_A):
-    global curr_dots
+    global u_prev
     mat_U = np.mat(np.zeros((len(t_dots), mat_A.shape[1]), dtype=float))
     mat_U[[K - 1]] = psi_of_x
     for k in range(K - 2, -1, -1):
-        mat_U[[k]] = ComputeDots(mat_A)
-        curr_dots = np.array([x for x in new_dots]) 
+        mat_U[k] = ComputeDots(mat_A)
+        u_prev = np.array([*u_new]) 
     return mat_U
       
     
