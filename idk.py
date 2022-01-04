@@ -42,9 +42,9 @@ def log(smth):
 # Setting new dots from previouses
 def SetNewDots():
     u_new[0] = u_prev[0] + 2 * sigma * (u_prev[1] - u_prev[0])
-    for i in range(1, I - 1):
+    for i in range(1, I):
         u_new[i] = u_prev[i] + sigma * (u_prev[i + 1] - 2 * u_prev[i] + u_prev[i - 1])
-    u_new[I - 1] = u_prev[I - 1] + 2 * sigma * ((-1 - H * h_x) * u_prev[I - 1] + u_prev[I - 2])
+    u_new[I] = u_prev[I] + 2 * sigma * ((-1 - H * h_x) * u_prev[I] + u_prev[I])
 
 
 # SweepMethod for the Crank-Nicolson scheme
@@ -53,14 +53,14 @@ def ComputeDots(mat_A):
     # Computing run coeffs 
     p[0] = -mat_A[0, 1] / mat_A[0, 0]
     q[0] = u_new[0] / mat_A[0, 0]
-    for i in range(1, I - 1):
+    for i in range(1, I):
         p[i] = -mat_A[i, i + 1] / (mat_A[i, i] + p[i - 1] * mat_A[i, i - 1])
         q[i] = (u_new[i] - mat_A[i, i - 1] * q[i - 1]) / (mat_A[i, i] + p[i - 1] * mat_A[i, i - 1])
-    p[I - 1] = 0
-    q[I - 1] = (u_new[I - 1] - mat_A[I - 1, I - 2] * q[I - 2]) / (mat_A[I - 1, I - 1] + mat_A[I - 1, I - 2] * p[I - 2])
-    # Calculating dots values
-    u_new[I - 1] = q[I - 1]
-    for i in range(I - 1, 0, -1):
+    p[I] = 0
+    q[I] = (u_new[I] - mat_A[I, I - 1] * q[I - 1]) / (mat_A[I, I] + mat_A[I, I - 1] * p[I - 1])
+    # Calculating u(x, t) values
+    u_new[I] = q[I]
+    for i in range(I, 0, -1):
         u_new[i - 1] = u_new[i] * p[i - 1] + q[i - 1]
     return u_new
 
@@ -70,12 +70,12 @@ def setMatrix_A():
     mat_A = np.mat(np.zeros((len(x_dots), len(x_dots)), dtype=float))
     mat_A[0, 0] = 1 + 2 * sigma
     mat_A[0, 1] = -2 * sigma
-    for i in range(1, I - 1):
+    for i in range(1, I):
         mat_A[i, i - 1] = -sigma
         mat_A[i, i] = 1 + 2 * sigma
         mat_A[i, i + 1] = - sigma
-    mat_A[I - 1, I - 2] = -2 * sigma
-    mat_A[I - 1, I - 1] = 1 + 2 * sigma + 2 * sigma * H * h_x
+    mat_A[I, I - 1] = -2 * sigma
+    mat_A[I, I] = 1 + 2 * sigma + 2 * sigma * H * h_x
     return mat_A
   
 
@@ -83,8 +83,8 @@ def setMatrix_A():
 def addRow(mat_A):
     global u_prev
     mat_U = np.mat(np.zeros((len(t_dots), mat_A.shape[1]), dtype=float))
-    mat_U[[K - 1]] = psi_of_x
-    for k in range(K - 2, -1, -1):
+    mat_U[[K]] = psi_of_x
+    for k in range(K - 1, -1, -1):
         mat_U[k] = ComputeDots(mat_A)
         u_prev = np.array([*u_new]) 
     return mat_U
@@ -118,6 +118,9 @@ def createPlots(U):
     plt.show()
  
 
-# Program start 
+# Program start
+I, K = I - 1, K - 1 
+# After this, program will use last element often and never its actual value 
+# So instead writting every time "I - 1" it will use "I"
 U = addRow(setMatrix_A())
 createPlots(U)
