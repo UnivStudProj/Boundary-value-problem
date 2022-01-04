@@ -121,6 +121,6 @@ def createPlots(U):
 # Program start
 I, K = I - 1, K - 1 
 # After this, program will use last element often and never its actual value 
-# So instead writting every time "I - 1" it will use "I"
+# So instead of writting every time "I - 1" it will use "I"
 U = addRow(setMatrix_A())
 createPlots(U)
