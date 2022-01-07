@@ -23,11 +23,11 @@ x_dots = np.linspace(0, l, num=I)
 t_dots = np.linspace(0, T, num=K)
 psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
 
-# Arrays with the function values
+# Arrays with the dots values
 u_prev = np.array([*psi_of_x], dtype=float)
 u_new = np.empty_like(u_prev) 
 
-# Run coeffs arrays
+# Sweep coeffs arrays
 p = np.empty(len(x_dots), dtype=float)
 q = np.empty_like(p)
 
@@ -39,7 +39,7 @@ def log(smth):
     logging.info('=' * 50)
     
 
-# Setting new dots from previouses
+# Preparing new dots for the Tomas algorithm
 def SetNewDots():
     u_new[0] = u_prev[0] + 2 * sigma * (u_prev[1] - u_prev[0])
     for i in range(1, I):
@@ -47,10 +47,10 @@ def SetNewDots():
     u_new[I] = u_prev[I] + 2 * sigma * ((-1 - H * h_x) * u_prev[I] + u_prev[I])
 
 
-# SweepMethod for the Crank-Nicolson scheme
-def ComputeDots(mat_A):
+# Sweep method for the Crank-Nicolson scheme
+def TomasAlgorithm(mat_A):
     SetNewDots()
-    # Computing run coeffs 
+    # The forward sweep consists of the computation of new coefficients
     p[0] = -mat_A[0, 1] / mat_A[0, 0]
     q[0] = u_new[0] / mat_A[0, 0]
     for i in range(1, I):
@@ -58,7 +58,7 @@ def ComputeDots(mat_A):
         q[i] = (u_new[i] - mat_A[i, i - 1] * q[i - 1]) / (mat_A[i, i] + p[i - 1] * mat_A[i, i - 1])
     p[I] = 0
     q[I] = (u_new[I] - mat_A[I, I - 1] * q[I - 1]) / (mat_A[I, I] + mat_A[I, I - 1] * p[I - 1])
-    # Calculating u(x, t) values
+    # The solution is then obtained by back substitution
     u_new[I] = q[I]
     for i in range(I, 0, -1):
         u_new[i - 1] = u_new[i] * p[i - 1] + q[i - 1]
@@ -85,7 +85,7 @@ def addRow(mat_A):
     mat_U = np.mat(np.zeros((len(t_dots), mat_A.shape[1]), dtype=float))
     mat_U[K] = psi_of_x
     for k in range(K - 1, -1, -1):
-        mat_U[k] = ComputeDots(mat_A)
+        mat_U[k] = TomasAlgorithm(mat_A)
         u_prev = np.array([*u_new]) 
     return mat_U
       
