@@ -27,9 +27,9 @@ psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
 u_prev = np.array([*psi_of_x], dtype=float)
 u_new = np.empty_like(u_prev) 
 
-# Run coeffs vaults
-p = np.zeros(len(x_dots), dtype=float)
-q = np.zeros(len(x_dots), dtype=float)
+# Run coeffs arrays
+p = np.empty(len(x_dots), dtype=float)
+q = np.empty_like(p)
 
 
 # Logging thing
@@ -83,7 +83,7 @@ def setMatrix_A():
 def addRow(mat_A):
     global u_prev
     mat_U = np.mat(np.zeros((len(t_dots), mat_A.shape[1]), dtype=float))
-    mat_U[[K]] = psi_of_x
+    mat_U[K] = psi_of_x
     for k in range(K - 1, -1, -1):
         mat_U[k] = ComputeDots(mat_A)
         u_prev = np.array([*u_new]) 
