@@ -110,35 +110,33 @@ def ErrorAnalysis():
             since it need to write the next two values of the node
         
     """
-    err_dict = {
-        "U" : np.empty((6), dtype=float), # "U[0, 0]" values
-        "I" : np.empty((4), dtype=int), # "I" values (immutable)
-        "K" : np.empty((4), dtype=int), # "K" values (each value multiplied by 2)
-        "h_x / 2, h_t / 2" : np.empty((6), dtype=float), # Dicretizating step in space/time by 2
-        "h_x / 4, h_t / 4" : np.empty((6), dtype=float), # Dicretizating step in space/time by 4
-        "s_delta" : np.empty((6), dtype=float) # The error
-    }
-    err_dict["U"][0] = Solution(setMatrix_A())[0, 0]
+    U_arr = np.empty(6, dtype=float) # "U[0, 0]" values
+    I_arr = np.full(4, 50, dtype=int) # "I" values (immutable)
+    K_arr = np.empty_like(I_arr) # "K" values (each value multiplied by 2)
+    DeltaDiv2 = np.empty_like(U_arr) # Dicretizating step in space/time by 2
+    DeltaDiv4 = np.empty_like(U_arr) # Dicretizating step in space/time by 4
+    SmallDelta = np.empty_like(U_arr) # The error
+    U_arr[0] = Solution(setMatrix_A())[0, 0]
     for i in range(4):
-        err_dict["I"][i] = x_amount
-        err_dict["K"][i] = t_amount
+        K_arr[i] = t_amount
         changeTimeInterval(1)
-        err_dict["U"][i + 1] = Solution(setMatrix_A())[0, 0]
-        err_dict["h_x / 2, h_t / 2"][i] = err_dict["U"][i] - err_dict["U"][i + 1]
+        U_arr[i + 1] = Solution(setMatrix_A())[0, 0]
+        DeltaDiv2[i] = U_arr[i] - U_arr[i + 1]
         changeTimeInterval(1)
-        err_dict["U"][i + 2] = Solution(setMatrix_A())[0, 0]
-        err_dict["h_x / 4, h_t / 4"][i] = err_dict["U"][i + 1] - err_dict["U"][i + 2]
-        err_dict["s_delta"][i] = err_dict["h_x / 2, h_t / 2"][i] / err_dict["h_x / 4, h_t / 4"][i]
+        U_arr[i + 2] = Solution(setMatrix_A())[0, 0]
+        DeltaDiv4[i] = U_arr[i + 1] - U_arr[i + 2]
+        SmallDelta[i] = DeltaDiv2[i] / DeltaDiv4[i]
         changeTimeInterval()
-    ErrorPlot(err_dict)
+    err = np.array([I_arr, K_arr[:4], DeltaDiv2[:4], DeltaDiv4[:4], SmallDelta[:4]])
+    ErrorPlot(err)
 
 
+# Showing the error analysis table
 def ErrorPlot(err):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(7, 3), dpi=160)
+    ax.axis("tight")
     ax.axis("off")
-    err_arr = [x for x in list(err.values())]
-    log(err_arr)
-    df = pd.DataFrame(list(err.values(), columns=list(err.keys())))
+    df = pd.DataFrame(err.T, columns=["I", "K", "Div2", "Div4", "delta"])
     ax.table(cellText=df.values, colLabels=df.columns, loc='center')
     fig.tight_layout()
     plt.show()
@@ -182,6 +180,6 @@ def createPlots(U):
  
 
 # Program start
-U = Solution(setMatrix_A())
-createPlots(U)
+# U = Solution(setMatrix_A())
+# createPlots(U)
 ErrorAnalysis()
