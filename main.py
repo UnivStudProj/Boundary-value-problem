@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
+import pandas as pd
 
 logging.basicConfig(filename="ignore/sample.log", format='%(message)s', level=logging.INFO)
 
@@ -17,8 +18,8 @@ t_amount = 50
 # Arguments for the Crank-Nicolson scheme
 h_x = l / x_amount 
 h_t = T / t_amount
-cube_a = D / c
-sigma = (h_t * cube_a) / (2 * h_x ** 2)
+sq_a = D / c
+sigma = (h_t * sq_a) / (2 * h_x ** 2)
 x_dots = np.linspace(0, l, num=x_amount)
 t_dots = np.linspace(0, T, num=t_amount)
 psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
@@ -44,7 +45,7 @@ def log(smth):
     
 
 # Preparing new dots for the Tomas algorithm
-def SetNewDots():
+def setNewDots():
     u_new[0] = u_prev[0] + 2 * sigma * (u_prev[1] - u_prev[0])
     for i in range(1, I):
         u_new[i] = u_prev[i] + sigma * (u_prev[i + 1] - 2 * u_prev[i] + u_prev[i - 1])
@@ -53,7 +54,7 @@ def SetNewDots():
 
 # Sweep method for the Crank-Nicolson scheme
 def TomasAlgorithm(mat_A):
-    SetNewDots()
+    setNewDots()
     # The forward sweep consists of the computation of new coefficients
     p[0] = -mat_A[0, 1] / mat_A[0, 0]
     q[0] = u_new[0] / mat_A[0, 0]
@@ -100,11 +101,15 @@ def isStable():
     
   
 # Truncation error analysis 
-def ErrAnalysis():
-    global err_dict
-    # Creating dicionary that contains data for the error analysis in u(0, K)
-    # To copmute the small delta (the error) first is to decrease steps twice 2 times
-    
+def ErrorAnalysis():
+    """ Computing the error analysis
+
+        - Node: u(0, K)
+        - Steps of discretization: 4
+        - Adding 2 extra elements to some arrays,
+            since it need to write the next two values of the node
+        
+    """
     err_dict = {
         "U" : np.empty((6), dtype=float), # "U[0, 0]" values
         "I" : np.empty((4), dtype=int), # "I" values (immutable)
@@ -125,6 +130,18 @@ def ErrAnalysis():
         err_dict["h_x / 4, h_t / 4"][i] = err_dict["U"][i + 1] - err_dict["U"][i + 2]
         err_dict["s_delta"][i] = err_dict["h_x / 2, h_t / 2"][i] / err_dict["h_x / 4, h_t / 4"][i]
         changeTimeInterval()
+    ErrorPlot(err_dict)
+
+
+def ErrorPlot(err):
+    fig, ax = plt.subplots()
+    ax.axis("off")
+    err_arr = [x for x in list(err.values())]
+    log(err_arr)
+    df = pd.DataFrame(list(err.values(), columns=list(err.keys())))
+    ax.table(cellText=df.values, colLabels=df.columns, loc='center')
+    fig.tight_layout()
+    plt.show()
    
    
 # Increasing/Decreasing time interval 
@@ -132,7 +149,7 @@ def changeTimeInterval(mode=0):
     global t_amount, h_t, sigma, t_dots
     t_amount = t_amount * 2 if mode == 1 else t_amount // 2
     h_t = T / t_amount
-    sigma = (h_t * cube_a) / (2 * h_x ** 2)
+    sigma = (h_t * sq_a) / (2 * h_x ** 2)
     t_dots = np.linspace(0, T, num=t_amount)
     
     
@@ -161,10 +178,10 @@ def createPlots(U):
     ax2.set_xlabel('Time')
     ax2.grid()
     fig.tight_layout(w_pad=2) # Plots padding (width)
-    ErrAnalysis()
     plt.show()
  
 
 # Program start
 U = Solution(setMatrix_A())
 createPlots(U)
+ErrorAnalysis()
