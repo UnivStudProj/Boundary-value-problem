@@ -11,17 +11,21 @@ H = 0.007
 u_c = 0
 l = 10
 T = 40
-I = 50
-K = 50
+x_amount = 50
+t_amount = 50
 
 # Arguments for the Crank-Nicolson scheme
-h_x = l / I
-h_t = T / K
+h_x = l / x_amount 
+h_t = T / t_amount
 cube_a = D / c
 sigma = (h_t * cube_a) / (2 * h_x ** 2)
-x_dots = np.linspace(0, l, num=I)
-t_dots = np.linspace(0, T, num=K)
+x_dots = np.linspace(0, l, num=x_amount)
+t_dots = np.linspace(0, T, num=t_amount)
 psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
+
+# Using "I", "K" instead of "x_amount - 1", "t_amount - 1" respectively for more readability
+I = x_amount - 1
+K = t_amount - 1
 
 # Arrays with the dots values
 u_prev = np.array([*psi_of_x], dtype=float)
@@ -67,7 +71,7 @@ def TomasAlgorithm(mat_A):
 
 # Setting matrix "A" values
 def setMatrix_A():
-    mat_A = np.mat(np.zeros((len(x_dots), len(x_dots)), dtype=float))
+    mat_A = np.mat(np.empty((len(x_dots), len(x_dots)), dtype=float))
     mat_A[0, 0] = 1 + 2 * sigma
     mat_A[0, 1] = -2 * sigma
     for i in range(1, I):
@@ -80,15 +84,57 @@ def setMatrix_A():
   
 
 # Adding rows with substance concentration values
-def addRow(mat_A):
+def Solution(mat_A):
     global u_prev
-    mat_U = np.mat(np.zeros((len(t_dots), mat_A.shape[1]), dtype=float))
+    mat_U = np.mat(np.empty((len(t_dots), mat_A.shape[1]), dtype=float))
     mat_U[K] = psi_of_x
     for k in range(K - 1, -1, -1):
         mat_U[k] = TomasAlgorithm(mat_A)
         u_prev = np.array([*u_new]) 
     return mat_U
-      
+
+
+# Stability analysis
+def isStable():
+    return sigma <= 1 / (2 + 2 * h_x * H)
+    
+  
+# Truncation error analysis 
+def ErrAnalysis():
+    global err_dict
+    # Creating dicionary that contains data for the error analysis in u(0, K)
+    # To copmute the small delta (the error) first is to decrease steps twice 2 times
+    
+    err_dict = {
+        "U" : np.empty((6), dtype=float), # "U[0, 0]" values
+        "I" : np.empty((4), dtype=int), # "I" values (immutable)
+        "K" : np.empty((4), dtype=int), # "K" values (each value multiplied by 2)
+        "h_x / 2, h_t / 2" : np.empty((6), dtype=float), # Dicretizating step in space/time by 2
+        "h_x / 4, h_t / 4" : np.empty((6), dtype=float), # Dicretizating step in space/time by 4
+        "s_delta" : np.empty((6), dtype=float) # The error
+    }
+    err_dict["U"][0] = Solution(setMatrix_A())[0, 0]
+    for i in range(4):
+        err_dict["I"][i] = x_amount
+        err_dict["K"][i] = t_amount
+        changeTimeInterval(1)
+        err_dict["U"][i + 1] = Solution(setMatrix_A())[0, 0]
+        err_dict["h_x / 2, h_t / 2"][i] = err_dict["U"][i] - err_dict["U"][i + 1]
+        changeTimeInterval(1)
+        err_dict["U"][i + 2] = Solution(setMatrix_A())[0, 0]
+        err_dict["h_x / 4, h_t / 4"][i] = err_dict["U"][i + 1] - err_dict["U"][i + 2]
+        err_dict["s_delta"][i] = err_dict["h_x / 2, h_t / 2"][i] / err_dict["h_x / 4, h_t / 4"][i]
+        changeTimeInterval()
+   
+   
+# Increasing/Decreasing time interval 
+def changeTimeInterval(mode=0):
+    global t_amount, h_t, sigma, t_dots
+    t_amount = t_amount * 2 if mode == 1 else t_amount // 2
+    h_t = T / t_amount
+    sigma = (h_t * cube_a) / (2 * h_x ** 2)
+    t_dots = np.linspace(0, T, num=t_amount)
+    
     
 # Creating two plots 
 def createPlots(U):
@@ -115,12 +161,10 @@ def createPlots(U):
     ax2.set_xlabel('Time')
     ax2.grid()
     fig.tight_layout(w_pad=2) # Plots padding (width)
+    ErrAnalysis()
     plt.show()
  
 
 # Program start
-I, K = I - 1, K - 1 
-# After this, program will use last element often and never its actual value 
-# So instead of writting every time "I - 1" it will use "I"
-U = addRow(setMatrix_A())
+U = Solution(setMatrix_A())
 createPlots(U)
