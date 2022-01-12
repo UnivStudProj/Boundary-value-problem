@@ -116,7 +116,7 @@ def ErrorAnalysis():
         3. Compute the second vector (U2)
         4. Calculate the difference between last two vectors (U1 - U2)
         5. Do the 2, 3 and 4 steps one more time
-        6. Calculate the small delta by dividing each other values obtained in step 4 (first / second)
+        6. Calculate the small delta by dividing each other values obtained in step 4 (first one / second one)
         7. Multiply the step by 2 to set a new amount of dots for the next iteration 
         
     """
@@ -137,11 +137,11 @@ def ErrorAnalysis():
         SmallDelta[i] = DeltaDiv2[i] / DeltaDiv4[i]
         changeTimeInterval()
     err = np.array([I_arr, K_arr[:4], DeltaDiv2[:4], DeltaDiv4[:4], SmallDelta[:4]], dtype=np.float16)
-    ErrorPlot(err)
+    ErrorTable(err)
 
 
 # Showing the error analysis table
-def ErrorPlot(err):
+def ErrorTable(err):
     fig, ax = plt.subplots(figsize=(7, 3), dpi=122, num="The error table")
     ax.axis("tight")
     ax.axis("off")
@@ -161,7 +161,8 @@ def changeTimeInterval(mode=0):
     
     
 # Creating two plots 
-def createPlots(U):
+def createPlots():
+    U = Solution(setMatrix_A())
     # Creating one figure (window) which contains two axes (plots)
     fig, (ax1, ax2) = plt.subplots(
         nrows=1, # Number of rows of the subplot grid. 
@@ -186,9 +187,26 @@ def createPlots(U):
     ax2.grid()
     fig.tight_layout(w_pad=2) # Plots padding (width)
     plt.show()
+    
+
+# Shows lines with a different amount of "t" dots 
+def ConvergencePlot():
+    U = Solution(setMatrix_A())
+    fig, ax = plt.subplots(figsize=(8, 5), num='The convergence plot')
+    for _ in range(4):
+        ax.plot(x_dots, np.ravel(U[0]), label=f'u(x, {T}), x = {x_amount}, t = {t_amount}')
+        changeTimeInterval(1)
+        U = Solution(setMatrix_A())
+    ax.legend(loc='center left', bbox_to_anchor=(1.02, 0.5))
+    ax.set_title('Dynamic of substance concentretion change\n when discretizating the grid')
+    ax.set_xlabel('Coords')
+    ax.set_ylabel('Substance concentration')
+    ax.grid()
+    fig.tight_layout()
+    plt.show()
  
 
 # Program start
-U = Solution(setMatrix_A())
-createPlots(U)
+createPlots()
 ErrorAnalysis()
+ConvergencePlot()
