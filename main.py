@@ -24,10 +24,6 @@ x_dots = np.linspace(0, l, num=x_amount)
 t_dots = np.linspace(0, T, num=t_amount)
 psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
 
-# Using "I", "K" instead of "x_amount - 1", "t_amount - 1" respectively for more readability
-I = x_amount - 1
-K = t_amount - 1
-
 # Arrays with the dots values
 u_prev = np.array([*psi_of_x], dtype=float)
 u_new = np.empty_like(u_prev) 
@@ -72,6 +68,9 @@ def TomasAlgorithm(mat_A):
 
 # Setting matrix "A" values
 def setMatrix_A():
+    global I, K
+    I = x_amount - 1
+    K = t_amount - 1
     mat_A = np.mat(np.empty((len(x_dots), len(x_dots)), dtype=float))
     mat_A[0, 0] = 1 + 2 * sigma
     mat_A[0, 1] = -2 * sigma
@@ -91,7 +90,8 @@ def Solution(mat_A):
     mat_U[K] = psi_of_x
     for k in range(K - 1, -1, -1):
         mat_U[k] = TomasAlgorithm(mat_A)
-        u_prev = np.array([*u_new]) 
+        u_prev = np.array([*u_new], dtype=float)
+    u_prev = np.array([*psi_of_x], dtype=float)
     return mat_U
 
 
@@ -110,21 +110,20 @@ def ErrorAnalysis():
             since it need to write the next two values of the node
         
     """
-    U_arr = np.empty(6, dtype=float) # "U[0, 0]" values
     I_arr = np.full(4, 50, dtype=int) # "I" values (immutable)
     K_arr = np.empty_like(I_arr) # "K" values (each value multiplied by 2)
-    DeltaDiv2 = np.empty_like(U_arr) # Dicretizating step in space/time by 2
-    DeltaDiv4 = np.empty_like(U_arr) # Dicretizating step in space/time by 4
-    SmallDelta = np.empty_like(U_arr) # The error
-    U_arr[0] = Solution(setMatrix_A())[0, 0]
+    DeltaDiv2 = np.empty(6, dtype=float) # Dicretizating step in space/time by 2
+    DeltaDiv4 = np.empty_like(DeltaDiv2) # Dicretizating step in space/time by 4
+    SmallDelta = np.empty_like(DeltaDiv2) # The error
     for i in range(4):
+        U1 = Solution(setMatrix_A())[0, 0]
         K_arr[i] = t_amount
-        changeTimeInterval(1)
-        U_arr[i + 1] = Solution(setMatrix_A())[0, 0]
-        DeltaDiv2[i] = U_arr[i] - U_arr[i + 1]
-        changeTimeInterval(1)
-        U_arr[i + 2] = Solution(setMatrix_A())[0, 0]
-        DeltaDiv4[i] = U_arr[i + 1] - U_arr[i + 2]
+        changeTimeInterval(1) # Dividing step by 2 (h_x / 2, h_t / 2)
+        U2 = Solution(setMatrix_A())[0, 0]
+        DeltaDiv2[i] = U1 - U2
+        changeTimeInterval(1) # Dividing step by 2 (h_x / 4, h_t / 4)
+        U3 = Solution(setMatrix_A())[0, 0]
+        DeltaDiv4[i] = U2 - U3
         SmallDelta[i] = DeltaDiv2[i] / DeltaDiv4[i]
         changeTimeInterval()
     err = np.array([I_arr, K_arr[:4], DeltaDiv2[:4], DeltaDiv4[:4], SmallDelta[:4]])
@@ -133,11 +132,11 @@ def ErrorAnalysis():
 
 # Showing the error analysis table
 def ErrorPlot(err):
-    fig, ax = plt.subplots(figsize=(7, 3), dpi=160)
+    fig, ax = plt.subplots(figsize=(7, 3), dpi=228)
     ax.axis("tight")
     ax.axis("off")
-    df = pd.DataFrame(err.T, columns=["I", "K", "Div2", "Div4", "delta"])
-    ax.table(cellText=df.values, colLabels=df.columns, loc='center')
+    df = pd.DataFrame(err.T, columns=["I", "K", "Δh_x / 2", "Δh_t / 4", "delta"])
+    ax.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center')
     fig.tight_layout()
     plt.show()
    
@@ -180,6 +179,6 @@ def createPlots(U):
  
 
 # Program start
-# U = Solution(setMatrix_A())
-# createPlots(U)
+U = Solution(setMatrix_A())
+createPlots(U)
 ErrorAnalysis()
