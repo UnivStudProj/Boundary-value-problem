@@ -102,12 +102,22 @@ def isStable():
   
 # Truncation error analysis 
 def ErrorAnalysis():
-    """ Computing the error analysis
+    """ Performing the error analysis
 
         - Node: u(0, K)
         - Steps of discretization: 4
         - Adding 2 extra elements to some arrays,
             since it need to write the next two values of the node
+            
+        Loop logic
+        ----------
+        1. Set current dots amount and compute the first vector (U1)
+        2. Divide the step by 2 (h_x / 2, h_t / 2)
+        3. Compute the second vector (U2)
+        4. Calculate the difference between last two vectors (U1 - U2)
+        5. Do the 2, 3 and 4 steps one more time
+        6. Calculate the small delta by dividing each other values obtained in step 4 (first / second)
+        7. Multiply the step by 2 to set a new amount of dots for the next iteration 
         
     """
     I_arr = np.full(4, 50, dtype=int) # "I" values (immutable)
@@ -118,24 +128,24 @@ def ErrorAnalysis():
     for i in range(4):
         U1 = Solution(setMatrix_A())[0, 0]
         K_arr[i] = t_amount
-        changeTimeInterval(1) # Dividing step by 2 (h_x / 2, h_t / 2)
+        changeTimeInterval(1)
         U2 = Solution(setMatrix_A())[0, 0]
         DeltaDiv2[i] = U1 - U2
-        changeTimeInterval(1) # Dividing step by 2 (h_x / 4, h_t / 4)
+        changeTimeInterval(1)
         U3 = Solution(setMatrix_A())[0, 0]
         DeltaDiv4[i] = U2 - U3
         SmallDelta[i] = DeltaDiv2[i] / DeltaDiv4[i]
         changeTimeInterval()
-    err = np.array([I_arr, K_arr[:4], DeltaDiv2[:4], DeltaDiv4[:4], SmallDelta[:4]])
+    err = np.array([I_arr, K_arr[:4], DeltaDiv2[:4], DeltaDiv4[:4], SmallDelta[:4]], dtype=np.float16)
     ErrorPlot(err)
 
 
 # Showing the error analysis table
 def ErrorPlot(err):
-    fig, ax = plt.subplots(figsize=(7, 3), dpi=228)
+    fig, ax = plt.subplots(figsize=(7, 3), dpi=122, num="The error table")
     ax.axis("tight")
     ax.axis("off")
-    df = pd.DataFrame(err.T, columns=["I", "K", "Δh_x / 2", "Δh_t / 4", "delta"])
+    df = pd.DataFrame(err.T, columns=["I", "K", "Δhₓ / 2, Δhₜ / 2", "Δhₓ / 4, Δhₜ / 4", "δ"])
     ax.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center')
     fig.tight_layout()
     plt.show()
