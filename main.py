@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import logging
 import pandas as pd
+from tkinter import *
+from os import _exit
 
 logging.basicConfig(filename="ignore/sample.log", format='%(message)s', level=logging.INFO)
 
@@ -206,7 +208,102 @@ def ConvergencePlot():
     plt.show()
  
 
+class App(Frame):
+    
+    BAR_COlOR = '#424242'
+    TEXT_COLOR = '#e5e5e5'
+    VAR_COLOR = '#f72585'
+    
+    def __init__(self, parent):
+        Frame.__init__(self, parent)
+        self.pack(fill=BOTH)
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.borderFrame = Frame(self, width=500, height=600, bg=self.BAR_COlOR, highlightthickness=2, highlightbackground=self.VAR_COLOR)
+        self.borderFrame.pack_propagate(False)
+        self.borderFrame.pack(side=TOP)
+
+        self.holderFrame = Frame(self.borderFrame, width=500, height=560, bg='#2e2e2e', relief='raised')
+        self.holderFrame.pack_propagate(False)
+        self.holderFrame.pack(side=BOTTOM)
+
+        self.title_name = Label(self.borderFrame, text='Boundary value problem', bg=self.BAR_COlOR, 
+                                fg=self.TEXT_COLOR, font='Arial 18', anchor='w')
+        self.title_name.pack(side=LEFT, expand=1, fill=BOTH)
+
+        self.close_btn = Label(self.borderFrame, width=5, text='x', 
+                               bg=self.BAR_COlOR, fg=self.TEXT_COLOR, font='Aria 18')
+        self.close_btn.pack(side=RIGHT)
+
+        self.minimize_btn = Label(self.borderFrame, width=5, text='—', 
+                                  bg=self.BAR_COlOR, fg=self.TEXT_COLOR, font='Arial 18')
+        self.minimize_btn.pack(side=RIGHT)
+        
+        def hoverMinBtn(event):
+            event.widget.config(bg='#272727')
+        
+        def unhoverMinBtn(event):
+            event.widget.config(bg=self.BAR_COlOR)
+            
+        self.minimize_btn.bind('<Enter>', hoverMinBtn)
+        self.minimize_btn.bind('<Leave>', unhoverMinBtn)
+        self.minimize_btn.bind('<Button-1>', self.minimize)
+        
+        def hoverCloseBtn(event):
+            event.widget.config(bg='#d00000')
+        
+        def unhoverCloseBtn(event):
+            event.widget.config(bg=self.BAR_COlOR)
+        
+        self.close_btn.bind('<Enter>', hoverCloseBtn)
+        self.close_btn.bind('<Leave>', unhoverCloseBtn)
+        self.close_btn.bind('<Button-1>', self.exitProgram)
+        
+        self.title_name.bind('<Button-1>', self.startMove)
+        self.title_name.bind('<ButtonRelease-1>', self.stopMove)
+        self.title_name.bind('<B1-Motion>', self.moving) 
+        self.title_name.bind('<Map>', self.frame_mapped)
+        
+    def startMove(self, event):
+        self.x = event.x
+        self.y = event.y
+        
+    def stopMove(self, e):
+        self.x = None
+        self.y = None
+        
+    def moving(self, event):
+        x = (event.x_root - self.x - self.borderFrame.winfo_rootx() + self.borderFrame.winfo_rootx())
+        y = (event.y_root - self.y - self.borderFrame.winfo_rooty() + self.borderFrame.winfo_rooty())
+        win.geometry(f'+{x}+{y}')
+    
+    def frame_mapped(self, e):
+        win.update_idletasks()
+        win.overrideredirect(True)
+        win.state('normal')
+        
+    def minimize(self, e):
+        win.update_idletasks()
+        win.overrideredirect(False)
+        win.state('iconic')
+        
+    def exitProgram(self, e):
+        _exit(0)
+        
+
+win = Tk()
+win.geometry('500x600')
+win.overrideredirect(True)
+
+app = App(win)
+
+
+win.mainloop()
+
+
 # Program start
-createPlots()
-ErrorAnalysis()
-ConvergencePlot()
+# createPlots()
+# ErrorAnalysis()
+# ConvergencePlot()
