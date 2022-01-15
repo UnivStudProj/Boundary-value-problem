@@ -1,3 +1,4 @@
+from locale import currency
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
@@ -210,57 +211,129 @@ def ConvergencePlot():
 
 class App(Frame):
     
+    INN_COLOR = '#2e2e2e' 
     BAR_COlOR = '#424242'
     TEXT_COLOR = '#e5e5e5'
     VAR_COLOR = '#f72585'
-    
+    x = None
+    y = None
+    TITLES = (('Length of a rod', 'l'), ('Time interval', 'T'), ('Dots in space', 'x'), 
+              ('Dots in time', 't'), ('Diffusion factor', 'D'), ('Porosity factor', 'c'), ('Membrane diffusion factor', 'H'))
+    INN_FRAMES = []
+    WIDGET_ENTRIES = []
+    VAR_ENTRIES = []
+    currentValues = [l, T, x_amount, t_amount, D, c, H] 
+    # Initializing the main frame
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.pack(fill=BOTH)
 
         self.create_widgets()
 
+    # Creating widgets
     def create_widgets(self):
-        self.borderFrame = Frame(self, width=500, height=600, bg=self.BAR_COlOR, highlightthickness=2, highlightbackground=self.VAR_COLOR)
+        self.borderFrame = Frame(self, width=500, height=600, bg=self.BAR_COlOR, highlightthickness=2, highlightbackground=self.VAR_COLOR, highlightcolor=self.VAR_COLOR)
         self.borderFrame.pack_propagate(False)
         self.borderFrame.pack(side=TOP)
 
-        self.holderFrame = Frame(self.borderFrame, width=500, height=560, bg='#2e2e2e', relief='raised')
-        self.holderFrame.pack_propagate(False)
-        self.holderFrame.pack(side=BOTTOM)
+        holderFrame = Frame(self.borderFrame, width=500, height=560, bg=self.INN_COLOR, relief='raised')
+        holderFrame.pack_propagate(False)
+        holderFrame.pack(side=BOTTOM)
 
-        self.title_name = Label(self.borderFrame, text='Boundary value problem', bg=self.BAR_COlOR, 
-                                fg=self.TEXT_COLOR, font='Arial 18', anchor='w')
-        self.title_name.pack(side=LEFT, expand=1, fill=BOTH)
+        # Title
+        self.title_name = Label(self.borderFrame, text='Boundary value problem', bg=self.BAR_COlOR, fg=self.TEXT_COLOR, font='Helvetica 15', anchor='w')
+        self.title_name.pack(side=LEFT, expand=1, fill=BOTH, padx=5)
 
-        self.close_btn = Label(self.borderFrame, width=5, text='x', 
-                               bg=self.BAR_COlOR, fg=self.TEXT_COLOR, font='Aria 18')
+        # Close button
+        self.close_btn = Label(self.borderFrame, width=5, text='x', bg=self.BAR_COlOR, fg=self.TEXT_COLOR, font='Aria 18')
         self.close_btn.pack(side=RIGHT)
-
-        self.minimize_btn = Label(self.borderFrame, width=5, text='—', 
-                                  bg=self.BAR_COlOR, fg=self.TEXT_COLOR, font='Arial 18')
+        
+        # Minimize button
+        self.minimize_btn = Label(self.borderFrame, width=5, text='—', bg=self.BAR_COlOR, fg=self.TEXT_COLOR, font='Arial 18')
         self.minimize_btn.pack(side=RIGHT)
         
+        # Validating entered symbols 
+        def validate(*args):
+            """Input validate function
+            
+                args:
+                    action, index, value_if_allowed,
+                    prior_value, text, validation_type, 
+                    trigger_type, widget_name
+                 
+            """
+            if args[2]:
+                try:
+                    float(args[2])
+                    return True
+                except ValueError:
+                    return False
+            else:
+                return False
+        
+        validate_config = (holderFrame.register(validate), '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
+        
+        def widgetProperties(wType, *TextProps, valType=None, wFrame=None):
+            if wType == 'Frame':
+                return Frame(holderFrame, width=250, height=50, bg=self.INN_COLOR, highlightthickness=1, highlightbackground='#4d4f55')
+            elif wType == 'Label':
+                return Label(innFrame, text=TextProps[0], bg=self.INN_COLOR, fg=TextProps[1], font=TextProps[2])
+            elif wType == 'Entry':
+                return Entry(self.INN_FRAMES[wFrame], width=7, textvariable=valType, bg=self.BAR_COlOR, fg='cyan', font=('Quant Antiqua', 15), justify=CENTER, validate='key', validatecommand=validate_config)
+        
+        def traceLen(event):
+            txtVar = self.VAR_ENTRIES[self.WIDGET_ENTRIES.index(self.focus_get())]
+            txtVar.trace('w', lambda *args: characters_limit(txtVar))
+            
+        for l in self.TITLES: 
+            innFrame = widgetProperties('Frame') 
+            innFrame.pack(side=TOP, padx=10, pady=5, fill='x')
+            self.INN_FRAMES.append(innFrame)
+            
+            name = widgetProperties('Label', l[0], self.TEXT_COLOR, ('Arial', 18))
+            name.pack(side=LEFT)
+        
+            symbol = widgetProperties('Label', l[1], self.VAR_COLOR, ('Quant Antiqua', 17))
+            symbol.pack(side=LEFT)
+            
+            varTxt = IntVar(value=self.currentValues[self.TITLES.index(l)]) 
+            varWidget = widgetProperties('Entry', wFrame=self.TITLES.index(l), valType=varTxt) 
+            varWidget.pack(side=RIGHT)
+            varWidget.bind('<FocusIn>', traceLen)
+            self.WIDGET_ENTRIES.append(varWidget)
+            self.VAR_ENTRIES.append(varTxt)
+        
+        def characters_limit(entry_text):
+            if len(str(entry_text.get())) > 0:
+                entry_text.set(str(entry_text.get())[:4])
+
+        # Event trigger when mouse on the "minimize" button 
         def hoverMinBtn(event):
             event.widget.config(bg='#272727')
-        
+       
+        # Event trigger when mouse off the "minimlize" button 
         def unhoverMinBtn(event):
             event.widget.config(bg=self.BAR_COlOR)
             
+        # Binding events to the "minimmize" button  
         self.minimize_btn.bind('<Enter>', hoverMinBtn)
         self.minimize_btn.bind('<Leave>', unhoverMinBtn)
         self.minimize_btn.bind('<Button-1>', self.minimize)
         
+        # Event trigger when mouse on the "close" button 
         def hoverCloseBtn(event):
             event.widget.config(bg='#d00000')
         
+        # Event trigger when mouse off the "close" button 
         def unhoverCloseBtn(event):
             event.widget.config(bg=self.BAR_COlOR)
-        
+       
+        # Binding events to the "close" button 
         self.close_btn.bind('<Enter>', hoverCloseBtn)
         self.close_btn.bind('<Leave>', unhoverCloseBtn)
         self.close_btn.bind('<Button-1>', self.exitProgram)
         
+        # Binding events to the title label 
         self.title_name.bind('<Button-1>', self.startMove)
         self.title_name.bind('<ButtonRelease-1>', self.stopMove)
         self.title_name.bind('<B1-Motion>', self.moving) 
