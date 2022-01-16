@@ -1,4 +1,5 @@
 from locale import currency
+from multiprocessing.spawn import prepare
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
@@ -19,10 +20,6 @@ x_amount = 50
 t_amount = 50
 
 # Arguments for the Crank-Nicolson scheme
-h_x = l / x_amount 
-h_t = T / t_amount
-sq_a = D / c
-sigma = (h_t * sq_a) / (2 * h_x ** 2)
 x_dots = np.linspace(0, l, num=x_amount)
 t_dots = np.linspace(0, T, num=t_amount)
 psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
@@ -71,9 +68,16 @@ def TomasAlgorithm(mat_A):
 
 # Setting matrix "A" values
 def setMatrix_A():
-    global I, K
+    global I, K, h_x, h_t, sq_a, sigma
+    # Varibles for Crank-Nicolson scheme
     I = x_amount - 1
     K = t_amount - 1
+    h_x = l / x_amount 
+    h_t = T / t_amount
+    sq_a = D / c
+    sigma = (h_t * sq_a) / (2 * h_x ** 2)
+    
+    # filling matrix
     mat_A = np.mat(np.empty((len(x_dots), len(x_dots)), dtype=float))
     mat_A[0, 0] = 1 + 2 * sigma
     mat_A[0, 1] = -2 * sigma
@@ -189,6 +193,7 @@ def createPlots():
     ax2.set_xlabel('Time')
     ax2.grid()
     fig.tight_layout(w_pad=2) # Plots padding (width)
+    print(h_x)
     plt.show()
     
 
@@ -215,14 +220,16 @@ class App(Frame):
     BAR_COlOR = '#424242'
     TEXT_COLOR = '#e5e5e5'
     VAR_COLOR = '#f72585'
-    x = None
-    y = None
     TITLES = (('Length of a rod', 'l'), ('Time interval', 'T'), ('Dots in space', 'x'), 
               ('Dots in time', 't'), ('Diffusion factor', 'D'), ('Porosity factor', 'c'), ('Membrane diffusion factor', 'H'))
     INN_FRAMES = []
     WIDGET_ENTRIES = []
     VAR_ENTRIES = []
+    BUTTONS = (('Solution plots', lambda :createPlots()), ('The error table', lambda :ErrorAnalysis()), ('The convergence plot', lambda :ConvergencePlot()))
     currentValues = [l, T, x_amount, t_amount, D, c, H] 
+    x = None
+    y = None
+    
     # Initializing the main frame
     def __init__(self, parent):
         Frame.__init__(self, parent)
@@ -273,18 +280,33 @@ class App(Frame):
         
         validate_config = (holderFrame.register(validate), '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
         
-        def widgetProperties(wType, *TextProps, valType=None, wFrame=None):
+        # Building widget classes 
+        def widgetProperties(wType, *TextProps, valType=None, wFrame=None, hl_th=1, hl_bg='#4d4f55', cmd=None):
             if wType == 'Frame':
-                return Frame(holderFrame, width=250, height=50, bg=self.INN_COLOR, highlightthickness=1, highlightbackground='#4d4f55')
+                return Frame(holderFrame, width=250, height=50, bg=self.INN_COLOR, highlightthickness=hl_th, highlightbackground=hl_bg)
             elif wType == 'Label':
                 return Label(innFrame, text=TextProps[0], bg=self.INN_COLOR, fg=TextProps[1], font=TextProps[2])
             elif wType == 'Entry':
                 return Entry(self.INN_FRAMES[wFrame], width=7, textvariable=valType, bg=self.BAR_COlOR, fg='cyan', font=('Quant Antiqua', 15), justify=CENTER, validate='key', validatecommand=validate_config)
+            elif wType == 'Button':
+                return Button(wFrame, text=TextProps[0], command=cmd, bg='#161616', fg=self.TEXT_COLOR, font=('Comic Sans MS', 17), relief=GROOVE, bd=False)
         
+        # Tracing input size 
         def traceLen(event):
             txtVar = self.VAR_ENTRIES[self.WIDGET_ENTRIES.index(self.focus_get())]
             txtVar.trace('w', lambda *args: characters_limit(txtVar))
-            
+           
+        def setFromInputs(event):
+            global l, T, x_amount, t_amount, D, c, H
+            l = getint(self.VAR_ENTRIES[0].get())
+            T = getint(self.VAR_ENTRIES[1].get())
+            x_amount = getint(self.VAR_ENTRIES[2].get())
+            t_amount = getint(self.VAR_ENTRIES[3].get())
+            D = getdouble(self.VAR_ENTRIES[4].get())
+            c = getdouble(self.VAR_ENTRIES[5].get())
+            H = getdouble(self.VAR_ENTRIES[6].get())
+        
+        # Creating inscriptions and inputs 
         for l in self.TITLES: 
             innFrame = widgetProperties('Frame') 
             innFrame.pack(side=TOP, padx=10, pady=5, fill='x')
@@ -295,14 +317,26 @@ class App(Frame):
         
             symbol = widgetProperties('Label', l[1], self.VAR_COLOR, ('Quant Antiqua', 17))
             symbol.pack(side=LEFT)
-            
-            varTxt = IntVar(value=self.currentValues[self.TITLES.index(l)]) 
+            # FIXME: float and int 
+            varTxt = DoubleVar(value=self.currentValues[self.TITLES.index(l)]) 
             varWidget = widgetProperties('Entry', wFrame=self.TITLES.index(l), valType=varTxt) 
             varWidget.pack(side=RIGHT)
             varWidget.bind('<FocusIn>', traceLen)
+            varWidget.bind('<FocusOut>', setFromInputs)
+
             self.WIDGET_ENTRIES.append(varWidget)
             self.VAR_ENTRIES.append(varTxt)
         
+        # Creating buttons 
+        for b in self.BUTTONS:
+            btnFrame = widgetProperties('Frame', hl_th=2, hl_bg=self.VAR_COLOR)
+            btnFrame.pack(side=TOP, expand=True)
+            
+            btn = widgetProperties('Button', b[0], wFrame=btnFrame, cmd=b[1]) 
+            btn.pack(side=TOP)
+            
+        
+        # Setting character limit 
         def characters_limit(entry_text):
             if len(str(entry_text.get())) > 0:
                 entry_text.set(str(entry_text.get())[:4])
@@ -366,17 +400,11 @@ class App(Frame):
         _exit(0)
         
 
+# Program start
 win = Tk()
 win.geometry('500x600')
 win.overrideredirect(True)
 
 app = App(win)
 
-
 win.mainloop()
-
-
-# Program start
-# createPlots()
-# ErrorAnalysis()
-# ConvergencePlot()
