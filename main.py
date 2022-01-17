@@ -1,5 +1,3 @@
-from locale import currency
-from multiprocessing.spawn import prepare
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
@@ -19,26 +17,36 @@ T = 40
 x_amount = 50
 t_amount = 50
 
-# Arguments for the Crank-Nicolson scheme
-x_dots = np.linspace(0, l, num=x_amount)
-t_dots = np.linspace(0, T, num=t_amount)
-psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
-
-# Arrays with the dots values
-u_prev = np.array([*psi_of_x], dtype=float)
-u_new = np.empty_like(u_prev) 
-
-# Sweep coeffs arrays
-p = np.empty(len(x_dots), dtype=float)
-q = np.empty_like(p)
-
 
 # Logging thing
 def log(smth):
     logging.info('=' * 50)
     logging.info(smth)
     logging.info('=' * 50)
+
+def prepVars():
+    global I, K, h_x, h_t, sq_a, sigma, x_dots, t_dots, psi_of_x, u_prev, u_new, p, q
     
+    # Varibles for Crank-Nicolson scheme
+    I = x_amount - 1
+    K = t_amount - 1
+    h_x = l / x_amount 
+    h_t = T / t_amount
+    sq_a = D / c
+    sigma = (h_t * sq_a) / (2 * h_x ** 2)
+    
+    # Arguments for the Crank-Nicolson scheme
+    x_dots = np.linspace(0, l, num=x_amount)
+    t_dots = np.linspace(0, T, num=t_amount)
+    psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
+
+    # Arrays with the dots values
+    u_prev = np.array([*psi_of_x], dtype=float)
+    u_new = np.empty_like(u_prev) 
+
+    # Sweep coeffs arrays
+    p = np.empty(len(x_dots), dtype=float)
+    q = np.empty_like(p)
 
 # Preparing new dots for the Tomas algorithm
 def setNewDots():
@@ -68,15 +76,7 @@ def TomasAlgorithm(mat_A):
 
 # Setting matrix "A" values
 def setMatrix_A():
-    global I, K, h_x, h_t, sq_a, sigma
-    # Varibles for Crank-Nicolson scheme
-    I = x_amount - 1
-    K = t_amount - 1
-    h_x = l / x_amount 
-    h_t = T / t_amount
-    sq_a = D / c
-    sigma = (h_t * sq_a) / (2 * h_x ** 2)
-    
+    prepVars()
     # filling matrix
     mat_A = np.mat(np.empty((len(x_dots), len(x_dots)), dtype=float))
     mat_A[0, 0] = 1 + 2 * sigma
@@ -108,7 +108,7 @@ def isStable():
     
   
 # Truncation error analysis 
-def ErrorAnalysis():
+def computeErrorAnalysis():
     """ Performing the error analysis
 
         - Node: u(0, K)
@@ -144,11 +144,11 @@ def ErrorAnalysis():
         SmallDelta[i] = DeltaDiv2[i] / DeltaDiv4[i]
         changeTimeInterval()
     err = np.array([I_arr, K_arr[:4], DeltaDiv2[:4], DeltaDiv4[:4], SmallDelta[:4]], dtype=np.float16)
-    ErrorTable(err)
+    createErrorTable(err)
 
 
 # Showing the error analysis table
-def ErrorTable(err):
+def createErrorTable(err):
     fig, ax = plt.subplots(figsize=(7, 3), dpi=122, num="The error table")
     ax.axis("tight")
     ax.axis("off")
@@ -193,12 +193,11 @@ def createPlots():
     ax2.set_xlabel('Time')
     ax2.grid()
     fig.tight_layout(w_pad=2) # Plots padding (width)
-    print(h_x)
     plt.show()
     
 
 # Shows lines with a different amount of "t" dots 
-def ConvergencePlot():
+def createConvergencePlot():
     U = Solution(setMatrix_A())
     fig, ax = plt.subplots(figsize=(8, 5), num='The convergence plot')
     for _ in range(4):
@@ -222,10 +221,10 @@ class App(Frame):
     VAR_COLOR = '#f72585'
     TITLES = (('Length of a rod', 'l'), ('Time interval', 'T'), ('Dots in space', 'x'), 
               ('Dots in time', 't'), ('Diffusion factor', 'D'), ('Porosity factor', 'c'), ('Membrane diffusion factor', 'H'))
-    INN_FRAMES = []
-    WIDGET_ENTRIES = []
-    VAR_ENTRIES = []
-    BUTTONS = (('Solution plots', lambda :createPlots()), ('The error table', lambda :ErrorAnalysis()), ('The convergence plot', lambda :ConvergencePlot()))
+    innFrames_list = []
+    widgetEntries = []
+    varEntries = []
+    BUTTONS = ('Solution plots', 'The error table', 'The convergence plot')
     currentValues = [l, T, x_amount, t_amount, D, c, H] 
     x = None
     y = None
@@ -280,6 +279,15 @@ class App(Frame):
         
         validate_config = (holderFrame.register(validate), '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
         
+        def setVars(cmd):
+            if cmd == 0:
+               createPlots()
+            elif cmd == 1:
+                computeErrorAnalysis()
+            elif cmd == 2:
+                createConvergencePlot()
+            setFromInputs()
+         
         # Building widget classes 
         def widgetProperties(wType, *TextProps, valType=None, wFrame=None, hl_th=1, hl_bg='#4d4f55', cmd=None):
             if wType == 'Frame':
@@ -287,52 +295,56 @@ class App(Frame):
             elif wType == 'Label':
                 return Label(innFrame, text=TextProps[0], bg=self.INN_COLOR, fg=TextProps[1], font=TextProps[2])
             elif wType == 'Entry':
-                return Entry(self.INN_FRAMES[wFrame], width=7, textvariable=valType, bg=self.BAR_COlOR, fg='cyan', font=('Quant Antiqua', 15), justify=CENTER, validate='key', validatecommand=validate_config)
+                return Entry(self.innFrames_list[wFrame], width=7, textvariable=valType, bg=self.BAR_COlOR, fg='cyan', font=('Quant Antiqua', 15), justify=CENTER, validate='key', validatecommand=validate_config)
             elif wType == 'Button':
-                return Button(wFrame, text=TextProps[0], command=cmd, bg='#161616', fg=self.TEXT_COLOR, font=('Comic Sans MS', 17), relief=GROOVE, bd=False)
+                return Button(wFrame, text=TextProps[0], command=lambda : setVars(cmd), bg='#161616', fg=self.TEXT_COLOR, font=('Comic Sans MS', 17), relief=GROOVE, bd=False)
         
         # Tracing input size 
         def traceLen(event):
-            txtVar = self.VAR_ENTRIES[self.WIDGET_ENTRIES.index(self.focus_get())]
+            txtVar = self.varEntries[self.widgetEntries.index(self.focus_get())]
             txtVar.trace('w', lambda *args: characters_limit(txtVar))
            
-        def setFromInputs(event):
+        def setFromInputs(event=None):
             global l, T, x_amount, t_amount, D, c, H
-            l = getint(self.VAR_ENTRIES[0].get())
-            T = getint(self.VAR_ENTRIES[1].get())
-            x_amount = getint(self.VAR_ENTRIES[2].get())
-            t_amount = getint(self.VAR_ENTRIES[3].get())
-            D = getdouble(self.VAR_ENTRIES[4].get())
-            c = getdouble(self.VAR_ENTRIES[5].get())
-            H = getdouble(self.VAR_ENTRIES[6].get())
+            l = getint(self.varEntries[0].get())
+            T = getint(self.varEntries[1].get())
+            x_amount = getint(self.varEntries[2].get())
+            t_amount = getint(self.varEntries[3].get())
+            D = getdouble(self.varEntries[4].get())
+            c = getdouble(self.varEntries[5].get())
+            H = getdouble(self.varEntries[6].get())
         
         # Creating inscriptions and inputs 
         for l in self.TITLES: 
             innFrame = widgetProperties('Frame') 
             innFrame.pack(side=TOP, padx=10, pady=5, fill='x')
-            self.INN_FRAMES.append(innFrame)
+            self.innFrames_list.append(innFrame)
             
             name = widgetProperties('Label', l[0], self.TEXT_COLOR, ('Arial', 18))
             name.pack(side=LEFT)
         
             symbol = widgetProperties('Label', l[1], self.VAR_COLOR, ('Quant Antiqua', 17))
             symbol.pack(side=LEFT)
-            # FIXME: float and int 
-            varTxt = DoubleVar(value=self.currentValues[self.TITLES.index(l)]) 
+            
+            if self.TITLES.index(l) >= 4:
+                varTxt = DoubleVar(value=self.currentValues[self.TITLES.index(l)])
+            else:
+                varTxt = IntVar(value=self.currentValues[self.TITLES.index(l)])
+            
             varWidget = widgetProperties('Entry', wFrame=self.TITLES.index(l), valType=varTxt) 
             varWidget.pack(side=RIGHT)
             varWidget.bind('<FocusIn>', traceLen)
-            varWidget.bind('<FocusOut>', setFromInputs)
+            varWidget.bind('<KeyRelease>', setFromInputs)
 
-            self.WIDGET_ENTRIES.append(varWidget)
-            self.VAR_ENTRIES.append(varTxt)
+            self.widgetEntries.append(varWidget)
+            self.varEntries.append(varTxt)
         
         # Creating buttons 
         for b in self.BUTTONS:
             btnFrame = widgetProperties('Frame', hl_th=2, hl_bg=self.VAR_COLOR)
             btnFrame.pack(side=TOP, expand=True)
             
-            btn = widgetProperties('Button', b[0], wFrame=btnFrame, cmd=b[1]) 
+            btn = widgetProperties('Button', b, wFrame=btnFrame, cmd=self.BUTTONS.index(b)) 
             btn.pack(side=TOP)
             
         
@@ -406,5 +418,7 @@ win.geometry('500x600')
 win.overrideredirect(True)
 
 app = App(win)
+
+# win.iconbitmap('ignore/vector.ico')
 
 win.mainloop()
