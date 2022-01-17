@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
-import pandas as pd
+from pandas import DataFrame
 from tkinter import *
 from os import _exit
 
@@ -136,12 +136,15 @@ def computeErrorAnalysis():
     SmallDelta = np.empty_like(DeltaDiv2) # The error
     for i in range(4):
         U1 = Solution(setMatrix_A())[0, 0]
+        print(f'{i}: Stability : {isStable()}')
         K_arr[i] = t_amount
         changeTimeInterval(1)
         U2 = Solution(setMatrix_A())[0, 0]
+        print(f'{i}: Stability : {isStable()}')
         DeltaDiv2[i] = U1 - U2
         changeTimeInterval(1)
         U3 = Solution(setMatrix_A())[0, 0]
+        print(f'{i}: Stability : {isStable()}\n')
         DeltaDiv4[i] = U2 - U3
         SmallDelta[i] = DeltaDiv2[i] / DeltaDiv4[i]
         changeTimeInterval()
@@ -154,7 +157,7 @@ def createErrorTable(err):
     fig, ax = plt.subplots(figsize=(7, 3), dpi=122, num="The error table")
     ax.axis("tight")
     ax.axis("off")
-    df = pd.DataFrame(err.T, columns=["I", "K", "Δhₓ / 2, Δhₜ / 2", "Δhₓ / 4, Δhₜ / 4", "δ"])
+    df = DataFrame(err.T, columns=["I", "K", "Δhₓ / 2, Δhₜ / 2", "Δhₓ / 4, Δhₜ / 4", "δ"])
     ax.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center')
     fig.tight_layout()
     plt.show()
