@@ -24,18 +24,18 @@ def log(smth):
     logging.info(smth)
     logging.info('=' * 50)
 
+
+# Setting primary variables
 def prepVars():
     global I, K, h_x, h_t, sq_a, sigma, x_dots, t_dots, psi_of_x, u_prev, u_new, p, q
     
-    # Varibles for Crank-Nicolson scheme
+    # Variables for the Crank-Nicolson scheme
     I = x_amount - 1
     K = t_amount - 1
     h_x = l / x_amount 
     h_t = T / t_amount
     sq_a = D / c
     sigma = (h_t * sq_a) / (2 * h_x ** 2)
-    
-    # Arguments for the Crank-Nicolson scheme
     x_dots = np.linspace(0, l, num=x_amount)
     t_dots = np.linspace(0, T, num=t_amount)
     psi_of_x = [u_c + (1 + np.cos(np.pi * x / l)) for x in x_dots]
@@ -47,6 +47,7 @@ def prepVars():
     # Sweep coeffs arrays
     p = np.empty(len(x_dots), dtype=float)
     q = np.empty_like(p)
+
 
 # Preparing new dots for the Tomas algorithm
 def setNewDots():
@@ -124,7 +125,8 @@ def computeErrorAnalysis():
         4. Calculate the difference between last two vectors (U1 - U2)
         5. Do the 2, 3 and 4 steps one more time
         6. Calculate the small delta by dividing each other values obtained in step 4 (first one / second one)
-        7. Multiply the step by 2 to set a new amount of dots for the next iteration 
+        7. Multipying the step by 2 to set a new amount of dots for the next iteration
+        ----------
         
     """
     I_arr = np.full(4, 50, dtype=int) # "I" values (immutable)
@@ -177,6 +179,7 @@ def createPlots():
         figsize=(12, 5), # Figure size in inches (size also affected by dpi)
         num='Dynamic of substance concentretion change within the cylinder' # Window title
     )
+    
     # Substance concentration by time plot
     for i in range(U.shape[0] - 1, -1, int(-U.shape[0] / 10)):
         ax1.plot(x_dots, np.ravel(U[i]), label=f'u(x, {T - i * h_t:.2f})')
@@ -185,6 +188,7 @@ def createPlots():
     ax1.set_xlabel('Coords')
     ax1.set_ylabel('Substance concentration')
     ax1.grid()
+    
    # Substance concentration by space plot
     for k in range(0, U.shape[1], int(U.shape[1] / 10)):
         ax2.plot(t_dots, np.flip(np.ravel(U[:, k])), label=f'u({k * h_x:.2f}, t)')
@@ -221,10 +225,11 @@ class App(Frame):
     VAR_COLOR = '#f72585'
     TITLES = (('Length of a rod', 'l'), ('Time interval', 'T'), ('Dots in space', 'x'), 
               ('Dots in time', 't'), ('Diffusion factor', 'D'), ('Porosity factor', 'c'), ('Membrane diffusion factor', 'H'))
+    BUTTONS = ('Solution plots', 'The error table', 'The convergence plot')
+    
     innFrames_list = []
     widgetEntries = []
     varEntries = []
-    BUTTONS = ('Solution plots', 'The error table', 'The convergence plot')
     currentValues = [l, T, x_amount, t_amount, D, c, H] 
     x = None
     y = None
@@ -233,7 +238,7 @@ class App(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.pack(fill=BOTH)
-
+        
         self.create_widgets()
 
     # Creating widgets
@@ -247,7 +252,7 @@ class App(Frame):
         holderFrame.pack(side=BOTTOM)
 
         # Title
-        self.title_name = Label(self.borderFrame, text='Boundary value problem', bg=self.BAR_COlOR, fg=self.TEXT_COLOR, font='Helvetica 15', anchor='w')
+        self.title_name = Label(self.borderFrame, text='Boundary value problem', bg=self.BAR_COlOR, fg=self.TEXT_COLOR, font=('Lucida Calligraphy' , 14), anchor='w')
         self.title_name.pack(side=LEFT, expand=1, fill=BOTH, padx=5)
 
         # Close button
@@ -300,7 +305,7 @@ class App(Frame):
                 return Button(wFrame, text=TextProps[0], command=lambda : setVars(cmd), bg='#161616', fg=self.TEXT_COLOR, font=('Comic Sans MS', 17), relief=GROOVE, bd=False)
         
         # Tracing input size 
-        def traceLen(event):
+        def traceInputLength(event):
             txtVar = self.varEntries[self.widgetEntries.index(self.focus_get())]
             txtVar.trace('w', lambda *args: characters_limit(txtVar))
            
@@ -333,7 +338,7 @@ class App(Frame):
             
             varWidget = widgetProperties('Entry', wFrame=self.TITLES.index(l), valType=varTxt) 
             varWidget.pack(side=RIGHT)
-            varWidget.bind('<FocusIn>', traceLen)
+            varWidget.bind('<FocusIn>', traceInputLength)
             varWidget.bind('<KeyRelease>', setFromInputs)
 
             self.widgetEntries.append(varWidget)
@@ -351,13 +356,17 @@ class App(Frame):
         # Setting character limit 
         def characters_limit(entry_text):
             if len(str(entry_text.get())) > 0:
-                entry_text.set(str(entry_text.get())[:4])
+                if str(entry_text)[-1] == '2' or str(entry_text)[-1] == '3':
+                    entry_text.set(str(entry_text.get())[:2])
+                else:
+                    entry_text.set(str(entry_text.get())[:5])
+                
 
         # Event trigger when mouse on the "minimize" button 
         def hoverMinBtn(event):
             event.widget.config(bg='#272727')
        
-        # Event trigger when mouse off the "minimlize" button 
+        # Event trigger when mouse off the "minimize" button 
         def unhoverMinBtn(event):
             event.widget.config(bg=self.BAR_COlOR)
             
@@ -418,7 +427,5 @@ win.geometry('500x600')
 win.overrideredirect(True)
 
 app = App(win)
-
-# win.iconbitmap('ignore/vector.ico')
 
 win.mainloop()
