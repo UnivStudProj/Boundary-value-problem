@@ -286,7 +286,8 @@ class App(Frame):
                 return False
         
         validate_config = (holderFrame.register(validate), '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
-        
+       
+       # Buttons commands execution
         def setVars(cmd):
             if cmd == 0:
                createPlots()
@@ -297,21 +298,22 @@ class App(Frame):
             setFromInputs()
          
         # Building widget classes 
-        def widgetProperties(wType, *TextProps, valType=None, wFrame=None, hl_th=1, hl_bg='#4d4f55', cmd=None):
+        def widgetProperties(wType, *TextProps, hl_th=1, hl_bg='#4d4f55', **kw):
             if wType == 'Frame':
                 return Frame(holderFrame, width=250, height=50, bg=self.INN_COLOR, highlightthickness=hl_th, highlightbackground=hl_bg)
             elif wType == 'Label':
                 return Label(innFrame, text=TextProps[0], bg=self.INN_COLOR, fg=TextProps[1], font=TextProps[2])
             elif wType == 'Entry':
-                return Entry(self.innFrames_list[wFrame], width=7, textvariable=valType, bg=self.BAR_COlOR, fg='cyan', font=('Quant Antiqua', 15), justify=CENTER, validate='key', validatecommand=validate_config)
+                return Entry(self.innFrames_list[kw['wFrame']], width=7, textvariable=kw['valType'], bg=self.BAR_COlOR, fg='cyan', font=('Quant Antiqua', 15), justify=CENTER, validate='key', validatecommand=validate_config)
             elif wType == 'Button':
-                return Button(wFrame, text=TextProps[0], command=lambda : setVars(cmd), bg='#161616', fg=self.TEXT_COLOR, font=('Comic Sans MS', 17), relief=GROOVE, bd=False)
+                return Button(kw['wFrame'], text=TextProps[0], command=lambda : setVars(kw['cmd']), bg='#161616', fg=self.TEXT_COLOR, font=('Comic Sans MS', 17), relief=GROOVE, bd=False)
         
         # Tracing input size 
         def traceInputLength(event):
             txtVar = self.varEntries[self.widgetEntries.index(self.focus_get())]
             txtVar.trace('w', lambda *args: characters_limit(txtVar))
-           
+            
+        # Setting variables from inputs 
         def setFromInputs(event=None):
             global l, T, x_amount, t_amount, D, c, H
             l = getint(self.varEntries[0].get())
@@ -396,30 +398,36 @@ class App(Frame):
         self.title_name.bind('<ButtonRelease-1>', self.stopMove)
         self.title_name.bind('<B1-Motion>', self.moving) 
         self.title_name.bind('<Map>', self.frame_mapped)
-        
+       
+    # Mouse click coords 
     def startMove(self, event):
         self.x = event.x
         self.y = event.y
-        
+    
+    # Setting coords to its initial state 
     def stopMove(self, e):
         self.x = None
         self.y = None
-        
+     
+    # Subtracting the currnet upper left corner coords from current mouse coords
     def moving(self, event):
-        x = (event.x_root - self.x - self.borderFrame.winfo_rootx() + self.borderFrame.winfo_rootx())
-        y = (event.y_root - self.y - self.borderFrame.winfo_rooty() + self.borderFrame.winfo_rooty())
+        x = (event.x_root - self.x)
+        y = (event.y_root - self.y)
         win.geometry(f'+{x}+{y}')
     
+    # Retruning window normal state when expandingwindow
     def frame_mapped(self, e):
         win.update_idletasks()
         win.overrideredirect(True)
         win.state('normal')
         
+    # Changing window override and its state when minimizing the window
     def minimize(self, e):
         win.update_idletasks()
         win.overrideredirect(False)
         win.state('iconic')
-        
+    
+    # Closing the program
     def exitProgram(self, e):
         _exit(0)
         
